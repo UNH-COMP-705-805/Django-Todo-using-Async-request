@@ -1,0 +1,175 @@
+<h3 style="text-align:center"> Todo App using  Ajax request </h3>
+
+<div style="margin-left:1139px">
+<span>Welcome {{ user.username }}!
+
+    <p ><a href="{% url 'logout' %}">Log Out</a></p>
+</span>
+
+
+</div>
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <title>Django ajax TODO list</title>
+  </head>
+  <body>
+    <div class="container mt-5">
+
+      <form class="row mt-5 pt-5" id="form">
+        <div class="col-12 col-lg-6 offset-lg-2">
+          <div class="input-group">
+            <input type="text" class="form-control" id="todo_name" placeholder="Add a todo" required>
+            <button type="submit" class="text-white btn btn-info">Submit</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="row my-5">
+        <div class="col-12 col-lg-6 offset-lg-2">
+          <ul class="list-group">
+            <!-- List of todos goes here -->
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script></script>
+  </body>
+</html>
+<script>
+  
+  $(document).ready(function() {
+    // send a GET request to build the list of todos
+    $.ajax({
+      url: '/todo-list/',
+      type: 'GET',
+      dataType: 'json',
+    }).done(function(response) {
+        for (var i in response.todos) {
+          var todo = `<span>${response.todos[i].name}</span>`
+
+          var item = `
+          <li class="list-group-item d-flex justify-content-between">
+            ${todo}
+            <div>
+              <button id="edit" class="btn btn-success btn-sm" type="submit">Edit</button>
+              <button id="delete" class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </div>
+          </li>
+          `
+          $('.list-group').append(item) // append the new item to the <ul> tag
+        }
+      })
+
+//Send Post request to create todo
+function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              // Does this cookie string begin with the name we want?
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+      return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    var editedItem = null;
+    $('ul').on('click', 'li', function() {
+      // We do nothing here for now
+    }).on('click', '#edit', function(event) {
+      // we need to atach the click event to the button after
+      // the li tag is created, otherwise this will not work
+      event.stopPropagation(); // prevent the parent handler from being notified of the event
+      var li_tag = $(this).parent().parent() // `this` refer to the edit button
+
+      editedItem = li_tag
+      $('#todo_name').val(editedItem.children().first().text())   
+
+    }).on('click', '#delete', function(event) {
+      event.stopPropagation()
+      var url = "/todo-delete/"
+      var li_tag = $(this).parent().parent()
+
+      $.ajax({
+        url: url,
+        type: 'POST',
+        data: {
+          todo_name: li_tag.children().first().text(),
+          csrfmiddlewaretoken: csrftoken
+        },
+      }).done(function(response) {
+          if (response.status === 'deleted') {
+            li_tag.remove()
+          }
+        })
+    })
+
+    
+    $('#form').submit(function(e) {
+      e.preventDefault(); // prevent the page from reload
+      var url = "/todo-create/"
+      var data = {
+        todo_name: $('#todo_name').val(),
+        csrfmiddlewaretoken: csrftoken,
+      }
+      if (editedItem != null) {
+        var url = "/todo-edit/"
+        var data = {
+          todo_name: editedItem.children().first().text(), // the todo's name that we want to change
+          new_todo_name: $('#todo_name').val(), // the new todo's name
+          csrfmiddlewaretoken: csrftoken
+        }
+      }
+
+
+      $.ajax({
+        url: url,
+        type: 'POST',
+        data: data,
+      }).done(function(response) {
+          if (response.status === 'error') {
+            alert("todos must have unique name.")
+          } else if (response.status === 'created') {
+            var temp = `
+            <li class="list-group-item d-flex justify-content-between">
+              <span>${response.todo_name}</span>
+              <div>
+                <button id="edit" class="btn btn-success btn-sm" type="submit">Edit</button>
+                <button id="delete" class="btn btn-danger btn-sm" type="submit">Delete</button>
+              </div>
+            </li>
+            `
+            $('.list-group').append(temp)
+          }
+          else if (response.status === 'updated') {
+            editedItem.children().first().text(response.new_todo_name)
+            editedItem = null;
+          }
+        })
+      $(this).trigger('reset') // reset the form
+    })
+
+  //Edit todo
+   
+
+
+
+  })
+
+</script> 
