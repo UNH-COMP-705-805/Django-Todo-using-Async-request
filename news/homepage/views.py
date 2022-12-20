@@ -4,6 +4,11 @@ from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from .models import TODO
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, authenticate
+from django.contrib import messages
+from django.contrib.auth.forms import UserCreationForm
 import os
 # Create your views here.
 
@@ -11,6 +16,22 @@ class HomepageView(LoginRequiredMixin,TemplateView):
     template_name = 'index.html'
     login_url = '/auth/login/'
     redirect_field_name = 'redirect_to'
+    
+			    
+    def register(request):
+        if request.method == 'POST':
+           form = UserCreationForm(request.POST)
+           if form.is_valid():
+            form.save()
+
+            messages.success(request, f'Your account has been created. You can log in now!')    
+            return redirect('login')
+        else:
+            form = UserCreationForm()
+
+        context = {'form': form}
+        return render(request, 'registration/signup.html', context)
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
